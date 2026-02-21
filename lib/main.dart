@@ -1,10 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 void main() {
   runApp(const FishnetApp());
@@ -46,6 +50,7 @@ class ErrorRecord {
   final String message;
   final String stackTrace;
   final DateTime timestamp;
+  final String fullReport;
 
   ErrorRecord({
     required this.id,
@@ -54,6 +59,7 @@ class ErrorRecord {
     required this.message,
     required this.stackTrace,
     required this.timestamp,
+    required this.fullReport,
   });
 
   factory ErrorRecord.fromJson(Map<String, dynamic> json) {
@@ -64,6 +70,7 @@ class ErrorRecord {
       message: json['message'],
       stackTrace: json['stackTrace'],
       timestamp: DateTime.parse(json['timestamp']),
+      fullReport: json['fullReport'] ?? '',
     );
   }
 
@@ -75,6 +82,7 @@ class ErrorRecord {
       'message': message,
       'stackTrace': stackTrace,
       'timestamp': timestamp.toIso8601String(),
+      'fullReport': fullReport,
     };
   }
 }
@@ -101,6 +109,141 @@ class ErrorStorage {
   static Future<void> clearRecords() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_key);
+  }
+}
+
+class CrashReportGenerator {
+  static final DeviceInfoPlugin _deviceInfo = DeviceInfoPlugin();
+  static PackageInfo? _packageInfo;
+  static BaseDeviceInfo? _deviceData;
+
+  static Future<void> initialize() async {
+    _packageInfo = await PackageInfo.fromPlatform();
+    _deviceData = await _deviceInfo.deviceInfo;
+  }
+
+  static Future<String> generateReport({
+    required String errorType,
+    required String category,
+    required String errorMessage,
+    required String stackTrace,
+  }) async {
+    await initialize();
+    
+    final buffer = StringBuffer();
+    final timestamp = DateTime.now();
+    final dateFormat = DateFormat('yyyy-MM-dd HH:mm:ss.SSSSSSSSS');
+    
+    buffer.writeln('****** Fishnet crash report ${_packageInfo?.version ?? '1.0.0'} ******');
+    buffer.writeln();
+    buffer.writeln('Log type: Dart');
+    buffer.writeln();
+    
+    buffer.writeln('APK info:');
+    buffer.writeln("    Package: '${_packageInfo?.packageName ?? 'unknown'}'");
+    buffer.writeln("    Version: '${_packageInfo?.version ?? '1.0.0'}' (${_packageInfo?.buildNumber ?? '1'})");
+    buffer.writeln("    Build: '${_packageInfo?.buildSignature ?? 'debug'}'");
+    buffer.writeln();
+    
+    buffer.writeln('Device info:');
+    if (Platform.isAndroid && _deviceData is AndroidDeviceInfo) {
+      final info = _deviceData as AndroidDeviceInfo;
+      buffer.writeln("    Model: '${info.data['model'] ?? 'unknown'}'");
+      buffer.writeln("    Brand: '${info.data['brand'] ?? 'unknown'}'");
+      buffer.writeln("    Device: '${info.data['device'] ?? 'unknown'}'");
+      buffer.writeln("    Product: '${info.data['product'] ?? 'unknown'}'");
+      buffer.writeln("    Manufacturer: '${info.data['manufacturer'] ?? 'unknown'}'");
+      buffer.writeln("    Hardware: '${info.data['hardware'] ?? 'unknown'}'");
+      buffer.writeln("    Board: '${info.data['board'] ?? 'unknown'}'");
+      buffer.writeln("    Fingerprint: '${info.data['fingerprint'] ?? 'unknown'}'");
+      buffer.writeln("    Android ID: '${info.data['androidId'] ?? 'unknown'}'");
+      buffer.writeln("    SDK: ${info.version.sdkInt}");
+      buffer.writeln("    Release: '${info.version.release}'");
+      buffer.writeln("    Codename: '${info.version.codename}'");
+      buffer.writeln("    Incremental: '${info.version.incremental}'");
+      buffer.writeln("    Preview SDK: ${info.version.previewSdkInt}");
+      buffer.writeln("    Security Patch: '${info.version.securityPatch ?? 'unknown'}'");
+      buffer.writeln("    ABI: '${info.supportedAbis.isNotEmpty ? info.supportedAbis.first : 'unknown'}'");
+      buffer.writeln("    Supported ABIs: ${info.supportedAbis.join(', ')}");
+      buffer.writeln("    Is Physical Device: ${info.isPhysicalDevice}");
+      buffer.writeln("    Display: '${info.data['display'] ?? 'unknown'}'");
+      buffer.writeln("    Host: '${info.data['host'] ?? 'unknown'}'");
+    } else if (Platform.isIOS && _deviceData is IosDeviceInfo) {
+      final info = _deviceData as IosDeviceInfo;
+      buffer.writeln("    Name: '${info.name}'");
+      buffer.writeln("    Model: '${info.model}'");
+      buffer.writeln("    System Name: '${info.systemName}'");
+      buffer.writeln("    System Version: '${info.systemVersion}'");
+      buffer.writeln("    Identifier For Vendor: '${info.identifierForVendor ?? 'unknown'}'");
+      buffer.writeln("    Is Physical Device: ${info.isPhysicalDevice}");
+      buffer.writeln("    UTSCreate: '${info.utsname.machine ?? 'unknown'}'");
+      buffer.writeln("    Release: '${info.utsname.release ?? 'unknown'}'");
+      buffer.writeln("    Version: '${info.utsname.version ?? 'unknown'}'");
+    } else {
+      buffer.writeln("    Platform: '${Platform.operatingSystem}'");
+      buffer.writeln("    Version: '${Platform.operatingSystemVersion}'");
+    }
+    buffer.writeln("    Locale: '${PlatformDispatcher.instance.locale.toString()}'");
+    buffer.writeln("    Dart Version: '${Platform.version}'");
+    buffer.writeln();
+    
+    buffer.writeln('Timestamp: ${dateFormat.format(timestamp)}');
+    buffer.writeln();
+    
+    buffer.writeln('Error info:');
+    buffer.writeln("    Error type: $errorType");
+    buffer.writeln("    Category: $category");
+    buffer.writeln("    Message: $errorMessage");
+    buffer.writeln();
+    
+    buffer.writeln('Stack trace:');
+    final formattedStack = _formatStackTrace(stackTrace);
+    for (final line in formattedStack) {
+      buffer.writeln("    $line");
+    }
+    buffer.writeln();
+    
+    buffer.writeln('Dart runtime:');
+    buffer.writeln("    Platform: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}");
+    buffer.writeln("    Dart version: ${Platform.version}");
+    buffer.writeln("    Script: ${Platform.script}");
+    buffer.writeln("    Executable: ${Platform.executable}");
+    buffer.writeln("    Number of processors: ${Platform.numberOfProcessors}");
+    buffer.writeln();
+    
+    buffer.writeln('--- END OF CRASH REPORT ---');
+    
+    return buffer.toString();
+  }
+  
+  static List<String> _formatStackTrace(String stackTrace) {
+    final lines = stackTrace.split('\n');
+    final formatted = <String>[];
+    
+    for (int i = 0; i < lines.length; i++) {
+      final line = lines[i].trim();
+      if (line.isEmpty) continue;
+      
+      String formattedLine;
+      if (line.startsWith('#')) {
+        final match = RegExp(r'^#(\d+)\s+(.+?)\s+\((.+?):(\d+):(\d+)\)$').firstMatch(line);
+        if (match != null) {
+          final frameNum = int.parse(match.group(1)!);
+          final method = match.group(2)!;
+          final file = match.group(3)!;
+          final lineNum = match.group(4)!;
+          final colNum = match.group(5)!;
+          formattedLine = '#${frameNum.toString().padLeft(2, '0')} $file:$lineNum:$colNum ($method)';
+        } else {
+          formattedLine = '#${i.toString().padLeft(2, '0')} $line';
+        }
+      } else {
+        formattedLine = line;
+      }
+      formatted.add(formattedLine);
+    }
+    
+    return formatted;
   }
 }
 
@@ -436,7 +579,13 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
     });
   }
 
-  void _recordError(String type, String category, String message, String stackTrace) {
+  Future<void> _recordError(String type, String category, String message, String stackTrace) async {
+    final fullReport = await CrashReportGenerator.generateReport(
+      errorType: type,
+      category: category,
+      errorMessage: message,
+      stackTrace: stackTrace,
+    );
     final record = ErrorRecord(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       type: type,
@@ -444,6 +593,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
       message: message,
       stackTrace: stackTrace,
       timestamp: DateTime.now(),
+      fullReport: fullReport,
     );
     ErrorStorage.saveRecord(record);
     setState(() {
@@ -461,6 +611,8 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
   }
 
   void _showErrorDialog(ErrorDefinition errorDef, String message, String stackTrace) {
+    final fullReport = _records.isNotEmpty ? _records.first.fullReport : '';
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -491,7 +643,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
               Text('Stack Trace', style: Theme.of(context).textTheme.titleSmall),
               const SizedBox(height: 4),
               Container(
-                constraints: const BoxConstraints(maxHeight: 200),
+                constraints: const BoxConstraints(maxHeight: 150),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -504,10 +656,39 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                   ),
                 ),
               ),
+              const SizedBox(height: 12),
+              Text('Full Crash Report', style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 4),
+              Container(
+                constraints: const BoxConstraints(maxHeight: 200),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: SingleChildScrollView(
+                  child: SelectableText(
+                    fullReport,
+                    style: const TextStyle(fontSize: 10, fontFamily: 'monospace'),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
         actions: [
+          TextButton(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: fullReport));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Report copied to clipboard'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            child: const Text('Copy Report'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Close'),
@@ -753,51 +934,88 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
               style: Theme.of(context).textTheme.bodySmall,
             ),
             children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildInfoChip('Category', record.category, category.color),
-                    const SizedBox(height: 12),
-                    Text('Error Message', style: Theme.of(context).textTheme.titleSmall),
-                    const SizedBox(height: 4),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.errorContainer,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: SelectableText(
-                        record.message,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onErrorContainer,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text('Stack Trace', style: Theme.of(context).textTheme.titleSmall),
-                    const SizedBox(height: 4),
-                    Container(
-                      constraints: const BoxConstraints(maxHeight: 200),
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: SingleChildScrollView(
-                        child: SelectableText(
-                          record.stackTrace,
-                          style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+               Padding(
+                 padding: const EdgeInsets.all(16),
+                 child: Column(
+                   crossAxisAlignment: CrossAxisAlignment.start,
+                   children: [
+                     _buildInfoChip('Category', record.category, category.color),
+                     const SizedBox(height: 12),
+                     Text('Error Message', style: Theme.of(context).textTheme.titleSmall),
+                     const SizedBox(height: 4),
+                     Container(
+                       width: double.infinity,
+                       padding: const EdgeInsets.all(12),
+                       decoration: BoxDecoration(
+                         color: Theme.of(context).colorScheme.errorContainer,
+                         borderRadius: BorderRadius.circular(8),
+                       ),
+                       child: SelectableText(
+                         record.message,
+                         style: TextStyle(
+                           color: Theme.of(context).colorScheme.onErrorContainer,
+                         ),
+                       ),
+                     ),
+                     const SizedBox(height: 12),
+                     Text('Stack Trace', style: Theme.of(context).textTheme.titleSmall),
+                     const SizedBox(height: 4),
+                     Container(
+                       constraints: const BoxConstraints(maxHeight: 150),
+                       width: double.infinity,
+                       padding: const EdgeInsets.all(12),
+                       decoration: BoxDecoration(
+                         color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                         borderRadius: BorderRadius.circular(8),
+                       ),
+                       child: SingleChildScrollView(
+                         child: SelectableText(
+                           record.stackTrace,
+                           style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
+                         ),
+                       ),
+                     ),
+                     const SizedBox(height: 12),
+                     Text('Full Crash Report', style: Theme.of(context).textTheme.titleSmall),
+                     const SizedBox(height: 4),
+                     Container(
+                       constraints: const BoxConstraints(maxHeight: 250),
+                       width: double.infinity,
+                       padding: const EdgeInsets.all(12),
+                       decoration: BoxDecoration(
+                         color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                         borderRadius: BorderRadius.circular(8),
+                       ),
+                       child: SingleChildScrollView(
+                         child: SelectableText(
+                           record.fullReport,
+                           style: const TextStyle(fontSize: 10, fontFamily: 'monospace'),
+                         ),
+                       ),
+                     ),
+                     const SizedBox(height: 12),
+                     Row(
+                       mainAxisAlignment: MainAxisAlignment.end,
+                       children: [
+                         TextButton.icon(
+                           onPressed: () {
+                             Clipboard.setData(ClipboardData(text: record.fullReport));
+                             ScaffoldMessenger.of(context).showSnackBar(
+                               const SnackBar(
+                                 content: Text('Report copied to clipboard'),
+                                 behavior: SnackBarBehavior.floating,
+                               ),
+                             );
+                           },
+                           icon: const Icon(Icons.copy, size: 18),
+                           label: const Text('Copy Report'),
+                         ),
+                       ],
+                     ),
+                   ],
+                 ),
+               ),
+             ],
           ),
         );
       },
