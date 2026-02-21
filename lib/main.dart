@@ -1355,14 +1355,34 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                   ),
                   trailing: thread.isAlive 
                       ? const Icon(Icons.play_arrow, color: Colors.red)
-                      : const Icon(Icons.refresh, color: Colors.grey),
-                  enabled: thread.isAlive,
+                      : Icon(Icons.refresh, color: aliveThreads.isEmpty ? Colors.green : Colors.grey),
                   onTap: thread.isAlive 
                       ? () {
                           Navigator.pop(context);
                           _executeErrorOnThread(errorDef, thread, role);
                         }
-                      : null,
+                      : () {
+                          if (aliveThreads.isEmpty) {
+                            Navigator.pop(context);
+                            _threadManager.reviveThread(thread.id);
+                            _showThreadSelectionDialog(errorDef);
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Cannot revive ${thread.name}: ${aliveThreads.length} thread(s) still alive'),
+                                behavior: SnackBarBehavior.floating,
+                                action: SnackBarAction(
+                                  label: 'Revive All',
+                                  onPressed: () {
+                                    _threadManager.reviveAllThreads();
+                                    Navigator.pop(context);
+                                    _showThreadSelectionDialog(errorDef);
+                                  },
+                                ),
+                              ),
+                            );
+                          }
+                        },
                 ),
               );
             },
