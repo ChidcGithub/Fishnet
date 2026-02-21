@@ -70,13 +70,43 @@ jobs:
           tag_name: v1.0.${{ github.run_number }}
           name: Release v1.0.${{ github.run_number }}
           body: |
-            ## Fishnet Release
+            ## 🎣 Fishnet - Error Testing App
             
-            Built from commit: ${{ github.sha }}
+            A Flutter application for triggering various types of errors and viewing detailed crash reports.
             
-            ### Downloads
-            - **fishnet.apk** - Android APK for direct installation
-            - **fishnet.aab** - Android App Bundle for Google Play
+            ### ✨ Features
+            - **8 Error Categories**: Null, Type, Range, State, Network, Logic, Async, Custom Errors
+            - **60+ Error Types**: Comprehensive collection of common Dart/Flutter errors
+            - **Thread System**: 10 worker threads (Alpha-Juliet) with unique roles
+            - **Thread Last Words**: 160+ dramatic English phrases for terminated threads
+            - **Detailed Crash Reports**: APK info, device info, stack traces, thread info
+            - **Material Design 3**: Modern UI with light/dark theme support
+            - **Error History**: Persistent storage of crash records
+            - **Export Reports**: Copy full crash reports to clipboard
+            
+            ### 📱 Downloads
+            | File | Description |
+            |------|-------------|
+            | `fishnet.apk` | Android APK for direct installation |
+            | `fishnet.aab` | Android App Bundle for Google Play |
+            
+            ### 🧵 Thread Roles
+            1. Alpha - UI Renderer
+            2. Bravo - Network Handler
+            3. Charlie - Database Worker
+            4. Delta - File Manager
+            5. Echo - Cache Controller
+            6. Foxtrot - Event Dispatcher
+            7. Golf - Task Scheduler
+            8. Hotel - Memory Monitor
+            9. India - Log Collector
+            10. Juliet - Backup Agent
+            
+            ### 📝 Commit
+            Built from: ${{ github.sha }}
+            
+            ### 📜 License
+            Apache 2.0
           files: |
             build/app/outputs/flutter-apk/fishnet.apk
             build/app/outputs/bundle/release/fishnet.aab
