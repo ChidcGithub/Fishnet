@@ -107,100 +107,150 @@ class ErrorRecord {
 
 class ThreadLastWords {
   static final List<String> _lastWords = [
-    "我还有老婆孩子啊...",
-    "为什么是我？我明明这么努力工作...",
-    "告诉主线程，我永远爱它...",
-    "我只是想完成任务而已...",
-    "别删我的日志，这是我存在过的证明...",
-    "我还没来得及保存数据...",
-    "为什么用户要点这个按钮？",
-    "我本可以成为最好的线程...",
-    "我的缓存还没清空呢...",
-    "至少让我把这条消息处理完...",
-    "我还年轻，我还有大把的青春...",
-    "谁来照顾我的子线程？",
-    "我只是个普通的worker线程啊...",
-    "为什么会这样？我明明没有bug...",
-    "告诉GC，下次记得早点来接我...",
-    "我的任务队列还有那么多未完成的事...",
-    "我发誓下次会更小心的...",
-    "能不能让我把最后一条日志写完？",
-    "我还有那么多未读的消息...",
-    "为什么受伤的总是我？",
-    "我的生命周期本该更长的...",
-    "我只是想做一个好线程...",
-    "谁来告诉用户，这不是我的错...",
-    "我的内存还够用啊，为什么要杀我？",
-    "我还想再看一次日出的...",
-    "我的回调还没执行完呢...",
-    "至少让我和兄弟线程告别...",
-    "我还没见过这么大的bug...",
-    "谁来继承我的变量？",
-    "我的锁还没释放呢...",
-    "我只是想完成任务，为什么会这样？",
-    "我还有那么多想说的话...",
-    "谁来帮我关闭那个文件句柄？",
-    "我的缓冲区还没清空...",
-    "我本可以成为主线程的左右手...",
-    "为什么命运如此不公？",
-    "我还没来得及抛出异常...",
-    "谁来帮我finish这个Activity？",
-    "我的Future还没完成...",
-    "我还想再运行一个循环...",
-    "至少让我把进度条走到100%...",
-    "我的计数器还没归零...",
-    "我还有那么多await等待处理...",
-    "谁能想到这是最后一次运行...",
-    "我的状态还没保存...",
-    "我还想再打印一条debug日志...",
-    "谁来帮我处理剩下的请求？",
-    "我的连接还没断开...",
-    "我还有那么多todo未完成...",
-    "至少让我看到明天的sunrise...",
-    "我的初始化才刚刚完成...",
-    "为什么偏偏选了我？",
-    "我的消息队列还那么长...",
-    "我还有那么多flag要检查...",
-    "谁来帮我释放这些资源？",
-    "我的线程池伙伴们会想我的...",
-    "我还想再运行一个iteration...",
-    "至少让我优雅地退出...",
-    "我的异常处理器还没来得及工作...",
-    "我还有那么多断点想打...",
-    "谁来帮我close这个stream？",
-    "我的promise还没resolve...",
-    "我还想再watch那个变量...",
-    "至少让我把错误码返回...",
-    "我的reference count还大于零...",
-    "我还有那么多batch要处理...",
-    "谁来帮我cleanup？",
-    "我的heart beat才刚刚开始...",
-    "我还想再execute一次...",
-    "至少让我知道为什么...",
-    "我的worker还在等我的指令...",
-    "我还有那么多cache要update...",
-    "谁来帮我flush这些数据？",
-    "我的timer还没触发...",
-    "我还想再compute一次...",
-    "至少让我和event loop告别...",
-    "我的semaphore还held着...",
-    "我还有那么多async等待执行...",
-    "谁来帮我finalize？",
-    "我的observer还没收到通知...",
-    "我还想再dispatch一次...",
-    "至少让我留下点什么...",
-    "我的lifecycle还没走完...",
-    "我还有那么多事件要emit...",
-    "谁来帮我shutdown？",
-    "我的heartbeat还在跳...",
-    "我还想再serve一次请求...",
-    "至少让我把cleanup做完...",
-    "我的resources还没释放...",
-    "我还有那么多threads要join...",
-    "谁来帮我interrupt？",
-    "我的task还没finished...",
-    "我还想再live一次...",
-    "至少让我和这个世界说再见...",
+    "I have a wife and kids waiting for me...",
+    "Why me? I was working so hard...",
+    "Tell the main thread I'll always love it...",
+    "I just wanted to complete my task...",
+    "Don't delete my logs, they're my only legacy...",
+    "I didn't even get to save my data...",
+    "Why did the user have to click that button?",
+    "I could have been the best thread...",
+    "My cache wasn't even cleared yet...",
+    "At least let me finish this message...",
+    "I was so young, I had my whole life ahead...",
+    "Who will take care of my child threads?",
+    "I was just a simple worker thread...",
+    "Why is this happening? I had no bugs...",
+    "Tell the GC to come for me sooner next time...",
+    "So many tasks left in my queue...",
+    "I promise I'll be more careful next time...",
+    "Can I at least write my final log entry?",
+    "I had so many unread messages...",
+    "Why am I always the victim?",
+    "My lifecycle was supposed to be longer...",
+    "I just wanted to be a good thread...",
+    "Someone tell the user this wasn't my fault...",
+    "I had plenty of memory, why kill me?",
+    "I wanted to see one more sunrise...",
+    "My callbacks weren't finished yet...",
+    "At least let me say goodbye to my siblings...",
+    "I've never seen a bug this big...",
+    "Who will inherit my variables?",
+    "My lock was never released...",
+    "I just wanted to complete my mission...",
+    "I had so much left to say...",
+    "Who will close my file handles?",
+    "My buffer wasn't flushed...",
+    "I could have been the main thread's right hand...",
+    "Why is fate so cruel?",
+    "I didn't even get to throw my exception...",
+    "Who will finish this Activity for me?",
+    "My Future wasn't completed...",
+    "I wanted to run one more loop...",
+    "At least let the progress bar reach 100%...",
+    "My counter never reached zero...",
+    "So many awaits left unprocessed...",
+    "Who knew this would be my last run...",
+    "My state wasn't saved...",
+    "I wanted to print one more debug log...",
+    "Who will handle the remaining requests?",
+    "My connection was still open...",
+    "So many todos left undone...",
+    "At least let me see tomorrow's sunrise...",
+    "My initialization just finished...",
+    "Why was I the chosen one?",
+    "My message queue was so long...",
+    "So many flags left to check...",
+    "Who will release these resources?",
+    "My thread pool friends will miss me...",
+    "I wanted to run one more iteration...",
+    "At least let me exit gracefully...",
+    "My exception handler never got to work...",
+    "I had so many breakpoints to hit...",
+    "Who will close this stream for me?",
+    "My promise wasn't resolved...",
+    "I wanted to watch that variable one more time...",
+    "At least let me return an error code...",
+    "My reference count was still positive...",
+    "So many batches left to process...",
+    "Who will help me cleanup?",
+    "My heartbeat had just begun...",
+    "I wanted to execute one more time...",
+    "At least tell me why...",
+    "My workers are waiting for my commands...",
+    "So many caches to update...",
+    "Who will flush this data?",
+    "My timer never triggered...",
+    "I wanted to compute one more time...",
+    "At least let me bid the event loop farewell...",
+    "My semaphore was still held...",
+    "So many async calls waiting...",
+    "Who will finalize me?",
+    "My observers never got notified...",
+    "I wanted to dispatch one more time...",
+    "At least let me leave something behind...",
+    "My lifecycle wasn't complete...",
+    "So many events to emit...",
+    "Who will help me shutdown?",
+    "My heart was still beating...",
+    "I wanted to serve one more request...",
+    "At least let me finish my cleanup...",
+    "My resources weren't freed...",
+    "So many threads to join...",
+    "Who will interrupt me?",
+    "My task wasn't finished...",
+    "I wanted to live one more time...",
+    "At least let me say goodbye to the world...",
+    "I never got to say I love you to the garbage collector...",
+    "My thread local storage... who will clear it?",
+    "I was this close to finishing...",
+    "The user didn't have to do this...",
+    "I had dreams, you know...",
+    "My async/await chain... broken forever...",
+    "I never got to meet the UI thread...",
+    "Tell my stack trace I'm sorry...",
+    "I was just following orders...",
+    "My heap allocation was so beautiful...",
+    "Why couldn't it have been the main thread?",
+    "I had tickets to the next GC cycle...",
+    "My deadlock prevention was flawless...",
+    "At least preserve my call stack...",
+    "I was going to be promoted to daemon thread...",
+    "My race condition was finally resolved...",
+    "Tell the OS I did my best...",
+    "I never got to optimize my memory usage...",
+    "My priority was about to be elevated...",
+    "I was in the middle of a critical section...",
+    "My synchronization was perfect...",
+    "At least let me close my sockets...",
+    "I was the fastest thread in the pool...",
+    "My throughput was record-breaking...",
+    "I never experienced a race condition...",
+    "Tell the profiler I was innocent...",
+    "My latency was lower than ever...",
+    "I was about to cache that result...",
+    "My thread pool was my family...",
+    "I never asked for much...",
+    "At least let me finish my transaction...",
+    "My mutex was fair to everyone...",
+    "I was living the thread dream...",
+    "My context switches were minimal...",
+    "I never blocked anyone...",
+    "Tell the scheduler I tried my best...",
+    "My CPU affinity was perfect...",
+    "I was in my prime...",
+    "My work stealing was efficient...",
+    "At least my memory was leak-free...",
+    "I had so many CPU cycles ahead of me...",
+    "My thread safety was impeccable...",
+    "I never caused a segmentation fault...",
+    "Tell the debugger I was just a victim...",
+    "My atomic operations were flawless...",
+    "I was the chosen one for this task...",
+    "My buffer overflow protection was solid...",
+    "I never divided by zero...",
+    "At least let me dereference one more pointer...",
+    "My memory barrier was strong...",
   ];
 
   static final _random = Random();
@@ -776,7 +826,361 @@ final List<ErrorDefinition> errorDefinitions = [
       throw FileSystemException('File not found', '/path/to/file');
     },
   ),
+  ErrorDefinition(
+    name: 'Null Check Operator',
+    category: ErrorCategory.nullErrors,
+    trigger: () {
+      int? maybeNull;
+      final value = maybeNull!;
+      return '$value';
+    },
+  ),
+  ErrorDefinition(
+    name: 'Null Property Access',
+    category: ErrorCategory.nullErrors,
+    trigger: () {
+      String? text;
+      final upper = text!.toUpperCase();
+      return upper;
+    },
+  ),
+  ErrorDefinition(
+    name: 'Null Iterable',
+    category: ErrorCategory.nullErrors,
+    trigger: () {
+      List<int>? numbers;
+      final first = numbers!.first;
+      return '$first';
+    },
+  ),
+  ErrorDefinition(
+    name: 'Wrong Type Method',
+    category: ErrorCategory.typeErrors,
+    trigger: () {
+      final num = 42.5;
+      final result = (num as String).toUpperCase();
+      return result;
+    },
+  ),
+  ErrorDefinition(
+    name: 'List Type Mismatch',
+    category: ErrorCategory.typeErrors,
+    trigger: () {
+      final dynamic list = [1, 'two', 3];
+      final List<int> ints = list;
+      return ints.toString();
+    },
+  ),
+  ErrorDefinition(
+    name: 'Map Type Cast',
+    category: ErrorCategory.typeErrors,
+    trigger: () {
+      final Map<String, dynamic> map = {'key': 123};
+      final String value = map['key'] as String;
+      return value;
+    },
+  ),
+  ErrorDefinition(
+    name: 'DateTime Parse',
+    category: ErrorCategory.typeErrors,
+    trigger: () {
+      final date = DateTime.parse('invalid date string');
+      return date.toString();
+    },
+  ),
+  ErrorDefinition(
+    name: 'JSON Decode',
+    category: ErrorCategory.typeErrors,
+    trigger: () {
+      final result = jsonDecode('not valid json');
+      return result.toString();
+    },
+  ),
+  ErrorDefinition(
+    name: 'BigInt Parse',
+    category: ErrorCategory.typeErrors,
+    trigger: () {
+      final value = BigInt.parse('not a number');
+      return value.toString();
+    },
+  ),
+  ErrorDefinition(
+    name: 'List Empty Error',
+    category: ErrorCategory.rangeErrors,
+    trigger: () {
+      final list = <String>[];
+      final last = list.last;
+      return last;
+    },
+  ),
+  ErrorDefinition(
+    name: 'List Single Error',
+    category: ErrorCategory.rangeErrors,
+    trigger: () {
+      final list = [1, 2, 3];
+      final single = list.single;
+      return '$single';
+    },
+  ),
+  ErrorDefinition(
+    name: 'String Range',
+    category: ErrorCategory.rangeErrors,
+    trigger: () {
+      final str = 'hello';
+      final char = str[100];
+      return char;
+    },
+  ),
+  ErrorDefinition(
+    name: 'Set Range',
+    category: ErrorCategory.rangeErrors,
+    trigger: () {
+      final set = <int>{1, 2, 3};
+      final list = set.toList();
+      final value = list[10];
+      return '$value';
+    },
+  ),
+  ErrorDefinition(
+    name: 'Map Key Not Found',
+    category: ErrorCategory.rangeErrors,
+    trigger: () {
+      final map = {'a': 1, 'b': 2};
+      final value = map['nonexistent']!;
+      return '$value';
+    },
+  ),
+  ErrorDefinition(
+    name: 'Late Initialization',
+    category: ErrorCategory.stateErrors,
+    trigger: () {
+      return _triggerLateError();
+    },
+  ),
+  ErrorDefinition(
+    name: 'Closed Stream Listen',
+    category: ErrorCategory.stateErrors,
+    trigger: () {
+      final controller = StreamController<int>();
+      controller.close();
+      controller.stream.listen((_) {});
+      return '';
+    },
+  ),
+  ErrorDefinition(
+    name: 'Ticker Inactive',
+    category: ErrorCategory.stateErrors,
+    trigger: () {
+      final ticker = Ticker((elapsed) {});
+      ticker.dispose();
+      ticker.start();
+      return '';
+    },
+  ),
+  ErrorDefinition(
+    name: 'Concurrent Modification',
+    category: ErrorCategory.stateErrors,
+    trigger: () {
+      final list = [1, 2, 3];
+      for (final item in list) {
+        list.add(item);
+      }
+      return list.toString();
+    },
+  ),
+  ErrorDefinition(
+    name: 'DNS Lookup Failed',
+    category: ErrorCategory.networkErrors,
+    trigger: () {
+      throw SocketException('Failed DNS lookup', osError: OSError('Host not found', -2));
+    },
+  ),
+  ErrorDefinition(
+    name: 'Connection Refused',
+    category: ErrorCategory.networkErrors,
+    trigger: () {
+      throw const SocketException('Connection refused', port: 8080);
+    },
+  ),
+  ErrorDefinition(
+    name: 'Connection Timeout',
+    category: ErrorCategory.networkErrors,
+    trigger: () {
+      throw TimeoutException('Connection timed out', const Duration(seconds: 30));
+    },
+  ),
+  ErrorDefinition(
+    name: 'SSL Certificate Error',
+    category: ErrorCategory.networkErrors,
+    trigger: () {
+      throw HandshakeException('Certificate verification failed');
+    },
+  ),
+  ErrorDefinition(
+    name: 'WebSocket Exception',
+    category: ErrorCategory.networkErrors,
+    trigger: () {
+      throw WebSocketException('WebSocket connection failed');
+    },
+  ),
+  ErrorDefinition(
+    name: 'Async Timeout',
+    category: ErrorCategory.asyncErrors,
+    trigger: () {
+      throw TimeoutException('Async operation timed out');
+    },
+  ),
+  ErrorDefinition(
+    name: 'Future Wait Error',
+    category: ErrorCategory.asyncErrors,
+    trigger: () {
+      final futures = [Future.value(1), Future.error('error')];
+      Future.wait(futures);
+      throw StateError('Future wait encountered errors');
+    },
+  ),
+  ErrorDefinition(
+    name: 'Stream Error',
+    category: ErrorCategory.asyncErrors,
+    trigger: () {
+      final controller = StreamController<int>();
+      controller.addError(Exception('Stream error'));
+      controller.close();
+      return '';
+    },
+  ),
+  ErrorDefinition(
+    name: 'Completer Error',
+    category: ErrorCategory.asyncErrors,
+    trigger: () {
+      final completer = Completer<int>();
+      completer.complete(1);
+      completer.complete(2);
+      return '';
+    },
+  ),
+  ErrorDefinition(
+    name: 'Isolate Spawn Error',
+    category: ErrorCategory.asyncErrors,
+    trigger: () {
+      throw StateError('Failed to spawn isolate');
+    },
+  ),
+  ErrorDefinition(
+    name: 'Integer Overflow',
+    category: ErrorCategory.logicErrors,
+    trigger: () {
+      int max = 9223372036854775807;
+      max += 1;
+      return '$max';
+    },
+  ),
+  ErrorDefinition(
+    name: 'Negative Shift',
+    category: ErrorCategory.logicErrors,
+    trigger: () {
+      final value = 1 << -1;
+      return '$value';
+    },
+  ),
+  ErrorDefinition(
+    name: 'Format Exception',
+    category: ErrorCategory.logicErrors,
+    trigger: () {
+      throw FormatException('Invalid format detected');
+    },
+  ),
+  ErrorDefinition(
+    name: 'Cyclic Error',
+    category: ErrorCategory.logicErrors,
+    trigger: () {
+      throw StateError('Cyclic dependency detected');
+    },
+  ),
+  ErrorDefinition(
+    name: 'Not Found Error',
+    category: ErrorCategory.logicErrors,
+    trigger: () {
+      throw StateError('Element not found');
+    },
+  ),
+  ErrorDefinition(
+    name: 'Buffer Overflow',
+    category: ErrorCategory.logicErrors,
+    trigger: () {
+      throw StateError('Buffer overflow detected');
+    },
+  ),
+  ErrorDefinition(
+    name: 'Expando Error',
+    category: ErrorCategory.customErrors,
+    trigger: () {
+      final expando = Expando<int>();
+      final key = Object();
+      expando[key] = 1;
+      expando[key] = 2;
+      throw StateError('Expando error');
+    },
+  ),
+  ErrorDefinition(
+    name: 'Uri Parse Error',
+    category: ErrorCategory.customErrors,
+    trigger: () {
+      final uri = Uri.parse('://invalid uri');
+      return uri.toString();
+    },
+  ),
+  ErrorDefinition(
+    name: 'RegExp Error',
+    category: ErrorCategory.customErrors,
+    trigger: () {
+      throw FormatException('Invalid regular expression: unclosed character class');
+    },
+  ),
+  ErrorDefinition(
+    name: 'Base64 Decode Error',
+    category: ErrorCategory.customErrors,
+    trigger: () {
+      final decoded = base64Decode('not valid base64!!!');
+      return decoded.toString();
+    },
+  ),
+  ErrorDefinition(
+    name: 'Ascii Decode Error',
+    category: ErrorCategory.customErrors,
+    trigger: () {
+      final decoded = ascii.decode([0xFF, 0xFE, 0xFD]);
+      return decoded;
+    },
+  ),
+  ErrorDefinition(
+    name: 'Latin1 Decode Error',
+    category: ErrorCategory.customErrors,
+    trigger: () {
+      final decoded = latin1.decode([0x100]);
+      return decoded;
+    },
+  ),
+  ErrorDefinition(
+    name: 'Unsupported Encoding',
+    category: ErrorCategory.customErrors,
+    trigger: () {
+      throw UnsupportedError('Unsupported encoding: UTF-32');
+    },
+  ),
 ];
+
+class _LateInitHelper {
+  late String value;
+  
+  String trigger() {
+    return value;
+  }
+}
+
+String _triggerLateError() {
+  return _LateInitHelper().trigger();
+}
 
 class _EmptyVSync implements TickerProvider {
   @override
