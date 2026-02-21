@@ -176,9 +176,9 @@ class CrashReportGenerator {
       buffer.writeln("    System Version: '${info.systemVersion}'");
       buffer.writeln("    Identifier For Vendor: '${info.identifierForVendor ?? 'unknown'}'");
       buffer.writeln("    Is Physical Device: ${info.isPhysicalDevice}");
-      buffer.writeln("    UTSCreate: '${info.utsname.machine ?? 'unknown'}'");
-      buffer.writeln("    Release: '${info.utsname.release ?? 'unknown'}'");
-      buffer.writeln("    Version: '${info.utsname.version ?? 'unknown'}'");
+      buffer.writeln("    UTSCreate: '${info.utsname.machine}'");
+      buffer.writeln("    Release: '${info.utsname.release}'");
+      buffer.writeln("    Version: '${info.utsname.version}'");
     } else {
       buffer.writeln("    Platform: '${Platform.operatingSystem}'");
       buffer.writeln("    Version: '${Platform.operatingSystemVersion}'");
