@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -9,25 +10,39 @@ void main() {
   runApp(const FishnetApp());
 }
 
-class FishnetApp extends StatelessWidget {
-  const FishnetApp({super.key});
+enum ErrorCategory {
+  nullErrors('Null Errors', Icons.block, Color(0xFFE53935)),
+  typeErrors('Type Errors', Icons.data_object, Color(0xFF8E24AA)),
+  rangeErrors('Range Errors', Icons.format_list_numbered, Color(0xFFFB8C00)),
+  stateErrors('State Errors', Icons.sync_problem, Color(0xFF43A047)),
+  networkErrors('Network Errors', Icons.wifi_off, Color(0xFF1E88E5)),
+  logicErrors('Logic Errors', Icons.psychology, Color(0xFF5E35B1)),
+  asyncErrors('Async Errors', Icons.timer_off, Color(0xFF00ACC1)),
+  customErrors('Custom Errors', Icons.bug_report, Color(0xFFD81B60));
 
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Fishnet',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.red),
-        useMaterial3: true,
-      ),
-      home: const HomePage(),
-    );
-  }
+  final String label;
+  final IconData icon;
+  final Color color;
+
+  const ErrorCategory(this.label, this.icon, this.color);
+}
+
+class ErrorDefinition {
+  final String name;
+  final ErrorCategory category;
+  final String Function() trigger;
+
+  const ErrorDefinition({
+    required this.name,
+    required this.category,
+    required this.trigger,
+  });
 }
 
 class ErrorRecord {
   final String id;
   final String type;
+  final String category;
   final String message;
   final String stackTrace;
   final DateTime timestamp;
@@ -35,6 +50,7 @@ class ErrorRecord {
   ErrorRecord({
     required this.id,
     required this.type,
+    required this.category,
     required this.message,
     required this.stackTrace,
     required this.timestamp,
@@ -44,6 +60,7 @@ class ErrorRecord {
     return ErrorRecord(
       id: json['id'],
       type: json['type'],
+      category: json['category'] ?? 'Unknown',
       message: json['message'],
       stackTrace: json['stackTrace'],
       timestamp: DateTime.parse(json['timestamp']),
@@ -54,6 +71,7 @@ class ErrorRecord {
     return {
       'id': id,
       'type': type,
+      'category': category,
       'message': message,
       'stackTrace': stackTrace,
       'timestamp': timestamp.toIso8601String(),
@@ -86,21 +104,328 @@ class ErrorStorage {
   }
 }
 
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+class FishnetApp extends StatelessWidget {
+  const FishnetApp({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Fishnet',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF6750A4),
+          brightness: Brightness.light,
+        ),
+        appBarTheme: const AppBarTheme(
+          centerTitle: true,
+          elevation: 0,
+        ),
+        cardTheme: CardThemeData(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+      ),
+      darkTheme: ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF6750A4),
+          brightness: Brightness.dark,
+        ),
+      ),
+      themeMode: ThemeMode.system,
+      home: const MainScreen(),
+    );
+  }
 }
 
-class _HomePageState extends State<HomePage> {
+final List<ErrorDefinition> errorDefinitions = [
+  ErrorDefinition(
+    name: 'Null Pointer',
+    category: ErrorCategory.nullErrors,
+    trigger: () {
+      String? nullableString;
+      nullableString!.length;
+      return '';
+    },
+  ),
+  ErrorDefinition(
+    name: 'Null Method Call',
+    category: ErrorCategory.nullErrors,
+    trigger: () {
+      List<int>? list;
+      list!.add(1);
+      return '';
+    },
+  ),
+  ErrorDefinition(
+    name: 'Type Cast',
+    category: ErrorCategory.typeErrors,
+    trigger: () {
+      final dynamic value = 'string';
+      final int number = value as int;
+      return '$number';
+    },
+  ),
+  ErrorDefinition(
+    name: 'Type Mismatch',
+    category: ErrorCategory.typeErrors,
+    trigger: () {
+      final List<String> strings = [1, 2, 3] as List<String>;
+      return strings.toString();
+    },
+  ),
+  ErrorDefinition(
+    name: 'Index Out of Range',
+    category: ErrorCategory.rangeErrors,
+    trigger: () {
+      final list = [1, 2, 3];
+      final value = list[10];
+      return '$value';
+    },
+  ),
+  ErrorDefinition(
+    name: 'Negative Index',
+    category: ErrorCategory.rangeErrors,
+    trigger: () {
+      final list = [1, 2, 3];
+      final value = list[-1];
+      return '$value';
+    },
+  ),
+  ErrorDefinition(
+    name: 'Range Error',
+    category: ErrorCategory.rangeErrors,
+    trigger: () {
+      final list = <int>[];
+      final value = list.first;
+      return '$value';
+    },
+  ),
+  ErrorDefinition(
+    name: 'Format Parse',
+    category: ErrorCategory.typeErrors,
+    trigger: () {
+      final number = int.parse('not a number');
+      return '$number';
+    },
+  ),
+  ErrorDefinition(
+    name: 'Double Parse',
+    category: ErrorCategory.typeErrors,
+    trigger: () {
+      final number = double.parse('abc');
+      return '$number';
+    },
+  ),
+  ErrorDefinition(
+    name: 'Disposed Controller',
+    category: ErrorCategory.stateErrors,
+    trigger: () {
+      final controller = TextEditingController();
+      controller.dispose();
+      controller.text = 'This will fail';
+      return controller.text;
+    },
+  ),
+  ErrorDefinition(
+    name: 'Animation After Dispose',
+    category: ErrorCategory.stateErrors,
+    trigger: () {
+      final controller = AnimationController(
+        duration: const Duration(seconds: 1),
+        vsync: _EmptyVSync(),
+      );
+      controller.dispose();
+      controller.forward();
+      return '';
+    },
+  ),
+  ErrorDefinition(
+    name: 'Stream After Close',
+    category: ErrorCategory.stateErrors,
+    trigger: () {
+      final controller = StreamController<int>();
+      controller.close();
+      controller.add(1);
+      return '';
+    },
+  ),
+  ErrorDefinition(
+    name: 'Assertion Failure',
+    category: ErrorCategory.logicErrors,
+    trigger: () {
+      assert(false, 'This assertion always fails');
+      return '';
+    },
+  ),
+  ErrorDefinition(
+    name: 'Unimplemented',
+    category: ErrorCategory.logicErrors,
+    trigger: () {
+      throw UnimplementedError('This feature is not implemented');
+    },
+  ),
+  ErrorDefinition(
+    name: 'Unsupported Operation',
+    category: ErrorCategory.logicErrors,
+    trigger: () {
+      throw UnsupportedError('This operation is not supported');
+    },
+  ),
+  ErrorDefinition(
+    name: 'Socket Exception',
+    category: ErrorCategory.networkErrors,
+    trigger: () {
+      throw const SocketException('Network connection failed');
+    },
+  ),
+  ErrorDefinition(
+    name: 'Http Exception',
+    category: ErrorCategory.networkErrors,
+    trigger: () {
+      throw HttpException('HTTP request failed', uri: Uri.parse('https://example.com'));
+    },
+  ),
+  ErrorDefinition(
+    name: 'Handshake Exception',
+    category: ErrorCategory.networkErrors,
+    trigger: () {
+      throw HandshakeException('TLS handshake failed');
+    },
+  ),
+  ErrorDefinition(
+    name: 'Timeout',
+    category: ErrorCategory.asyncErrors,
+    trigger: () {
+      throw TimeoutException('Operation timed out');
+    },
+  ),
+  ErrorDefinition(
+    name: 'Async Error',
+    category: ErrorCategory.asyncErrors,
+    trigger: () {
+      throw StateError('Async operation failed');
+    },
+  ),
+  ErrorDefinition(
+    name: 'Future Error',
+    category: ErrorCategory.asyncErrors,
+    trigger: () {
+      throw Exception('Future completed with error');
+    },
+  ),
+  ErrorDefinition(
+    name: 'Division by Zero',
+    category: ErrorCategory.logicErrors,
+    trigger: () {
+      final result = 1 ~/ 0;
+      return '$result';
+    },
+  ),
+  ErrorDefinition(
+    name: 'Modulo by Zero',
+    category: ErrorCategory.logicErrors,
+    trigger: () {
+      final result = 10 % 0;
+      return '$result';
+    },
+  ),
+  ErrorDefinition(
+    name: 'Stack Overflow',
+    category: ErrorCategory.logicErrors,
+    trigger: () {
+      void recursive() {
+        recursive();
+      }
+      recursive();
+      return '';
+    },
+  ),
+  ErrorDefinition(
+    name: 'Argument Error',
+    category: ErrorCategory.customErrors,
+    trigger: () {
+      throw ArgumentError('Invalid argument provided');
+    },
+  ),
+  ErrorDefinition(
+    name: 'Range Error Custom',
+    category: ErrorCategory.customErrors,
+    trigger: () {
+      throw RangeError('Value out of valid range');
+    },
+  ),
+  ErrorDefinition(
+    name: 'State Error',
+    category: ErrorCategory.customErrors,
+    trigger: () {
+      throw StateError('Invalid state encountered');
+    },
+  ),
+  ErrorDefinition(
+    name: 'Custom Exception',
+    category: ErrorCategory.customErrors,
+    trigger: () {
+      throw Exception('This is a custom error message');
+    },
+  ),
+  ErrorDefinition(
+    name: 'Process Exception',
+    category: ErrorCategory.customErrors,
+    trigger: () {
+      throw ProcessException('cmd', [], 'Process failed', 1);
+    },
+  ),
+  ErrorDefinition(
+    name: 'File System Exception',
+    category: ErrorCategory.customErrors,
+    trigger: () {
+      throw FileSystemException('File not found', '/path/to/file');
+    },
+  ),
+];
+
+class _EmptyVSync implements TickerProvider {
+  @override
+  Ticker createTicker(TickerCallback onTick) {
+    return Ticker(onTick);
+  }
+}
+
+class MainScreen extends StatefulWidget {
+  const MainScreen({super.key});
+
+  @override
+  State<MainScreen> createState() => _MainScreenState();
+}
+
+class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   List<ErrorRecord> _records = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _loadRecords();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadRecords() async {
@@ -111,10 +436,11 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void _recordError(String type, String message, String stackTrace) {
+  void _recordError(String type, String category, String message, String stackTrace) {
     final record = ErrorRecord(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       type: type,
+      category: category,
       message: message,
       stackTrace: stackTrace,
       timestamp: DateTime.now(),
@@ -125,287 +451,356 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void _showErrorDialog(String title, String message, String stackTrace) {
-    _recordError(title, message, stackTrace);
+  void _triggerError(ErrorDefinition errorDef) {
+    try {
+      errorDef.trigger();
+    } catch (e, stack) {
+      _recordError(errorDef.name, errorDef.category.label, e.toString(), stack.toString());
+      _showErrorDialog(errorDef, e.toString(), stack.toString());
+    }
+  }
+
+  void _showErrorDialog(ErrorDefinition errorDef, String message, String stackTrace) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(title),
+        icon: Icon(errorDef.category.icon, color: errorDef.category.color, size: 32),
+        title: Text(errorDef.name),
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Message:', style: const TextStyle(fontWeight: FontWeight.bold)),
-              Text(message, style: const TextStyle(color: Colors.red)),
-              const SizedBox(height: 8),
-              Text('Stack Trace:', style: const TextStyle(fontWeight: FontWeight.bold)),
-              Text(stackTrace, style: const TextStyle(fontSize: 10)),
+              _buildInfoChip('Category', errorDef.category.label, errorDef.category.color),
+              const SizedBox(height: 12),
+              Text('Message', style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 4),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.errorContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: SelectableText(
+                  message,
+                  style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text('Stack Trace', style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 4),
+              Container(
+                constraints: const BoxConstraints(maxHeight: 200),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: SingleChildScrollView(
+                  child: SelectableText(
+                    stackTrace,
+                    style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
+            child: const Text('Close'),
           ),
         ],
       ),
     );
   }
 
-  void _triggerNullError() {
-    try {
-      String? nullableString;
-      nullableString!.length;
-    } catch (e, stack) {
-      _showErrorDialog('Null Error', e.toString(), stack.toString());
-    }
-  }
-
-  void _triggerRangeError() {
-    try {
-      final list = [1, 2, 3];
-      final value = list[10];
-      debugPrint('$value');
-    } catch (e, stack) {
-      _showErrorDialog('Range Error', e.toString(), stack.toString());
-    }
-  }
-
-  void _triggerTypeError() {
-    try {
-      final dynamic value = 'string';
-      final int number = value as int;
-      debugPrint('$number');
-    } catch (e, stack) {
-      _showErrorDialog('Type Error', e.toString(), stack.toString());
-    }
-  }
-
-  void _triggerFormatException() {
-    try {
-      final number = int.parse('not a number');
-      debugPrint('$number');
-    } catch (e, stack) {
-      _showErrorDialog('Format Error', e.toString(), stack.toString());
-    }
-  }
-
-  void _triggerStateError() {
-    try {
-      final controller = TextEditingController();
-      controller.dispose();
-      controller.text = 'This will fail';
-    } catch (e, stack) {
-      _showErrorDialog('State Error', e.toString(), stack.toString());
-    }
-  }
-
-  void _triggerAssertionError() {
-    try {
-      assert(false, 'This assertion always fails');
-    } catch (e, stack) {
-      _showErrorDialog('Assertion Error', e.toString(), stack.toString());
-    }
-  }
-
-  void _triggerUnsupportedError() {
-    try {
-      final list = [1, 2, 3];
-      list.removeWhere((element) => false);
-      throw UnsupportedError('This operation is not supported');
-    } catch (e, stack) {
-      _showErrorDialog('Unsupported Error', e.toString(), stack.toString());
-    }
-  }
-
-  void _triggerTimeoutError() {
-    try {
-      throw TimeoutException('Operation timed out');
-    } catch (e, stack) {
-      _showErrorDialog('Timeout Error', e.toString(), stack.toString());
-    }
-  }
-
-  void _triggerIOException() {
-    try {
-      throw const SocketException('Network connection failed');
-    } catch (e, stack) {
-      _showErrorDialog('IO Error', e.toString(), stack.toString());
-    }
-  }
-
-  void _triggerCustomError() {
-    try {
-      throw Exception('This is a custom error message');
-    } catch (e, stack) {
-      _showErrorDialog('Custom Exception', e.toString(), stack.toString());
-    }
-  }
-
-  void _triggerDivisionByZero() {
-    try {
-      final result = 1 ~/ 0;
-      debugPrint('$result');
-    } catch (e, stack) {
-      _showErrorDialog('Integer Division By Zero', e.toString(), stack.toString());
-    }
-  }
-
-  void _triggerStackOverflow() {
-    try {
-      void recursive() {
-        recursive();
-      }
-      recursive();
-    } catch (e, stack) {
-      _showErrorDialog('Stack Overflow', e.toString(), stack.toString());
-    }
+  Widget _buildInfoChip(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('$label: ', style: TextStyle(fontSize: 12, color: color)),
+          Text(value, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color)),
+        ],
+      ),
+    );
   }
 
   void _clearHistory() {
-    ErrorStorage.clearRecords();
-    setState(() {
-      _records.clear();
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('History cleared')),
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear History'),
+        content: const Text('Are you sure you want to clear all error records?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              ErrorStorage.clearRecords();
+              setState(() {
+                _records.clear();
+              });
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('History cleared'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            child: const Text('Clear'),
+          ),
+        ],
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Fishnet'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.delete_sweep),
-            onPressed: _records.isEmpty ? null : _clearHistory,
-            tooltip: 'Clear History',
+      body: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) => [
+          SliverAppBar(
+            title: const Text('Fishnet'),
+            floating: true,
+            pinned: true,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.delete_sweep_outlined),
+                onPressed: _records.isEmpty ? null : _clearHistory,
+                tooltip: 'Clear History',
+              ),
+            ],
+            bottom: TabBar(
+              controller: _tabController,
+              tabs: const [
+                Tab(icon: Icon(Icons.bug_report_outlined), text: 'Trigger Errors'),
+                Tab(icon: Icon(Icons.history_outlined), text: 'History'),
+              ],
+            ),
           ),
         ],
+        body: TabBarView(
+          controller: _tabController,
+          children: [
+            _buildTriggerTab(),
+            _buildHistoryTab(),
+          ],
+        ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Text(
-                      'Trigger Errors',
-                      style: Theme.of(context).textTheme.titleLarge,
+    );
+  }
+
+  Widget _buildTriggerTab() {
+    final Map<ErrorCategory, List<ErrorDefinition>> categorizedErrors = {};
+    for (final category in ErrorCategory.values) {
+      categorizedErrors[category] = errorDefinitions
+          .where((e) => e.category == category)
+          .toList();
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: ErrorCategory.values.length,
+      itemBuilder: (context, index) {
+        final category = ErrorCategory.values[index];
+        final errors = categorizedErrors[category]!;
+        if (errors.isEmpty) return const SizedBox.shrink();
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: category.color.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(category.icon, color: category.color),
                     ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        _buildErrorButton('Null Error', _triggerNullError, Colors.red),
-                        _buildErrorButton('Range Error', _triggerRangeError, Colors.orange),
-                        _buildErrorButton('Type Error', _triggerTypeError, Colors.purple),
-                        _buildErrorButton('Format Error', _triggerFormatException, Colors.blue),
-                        _buildErrorButton('State Error', _triggerStateError, Colors.teal),
-                        _buildErrorButton('Assertion', _triggerAssertionError, Colors.indigo),
-                        _buildErrorButton('Unsupported', _triggerUnsupportedError, Colors.brown),
-                        _buildErrorButton('Timeout', _triggerTimeoutError, Colors.cyan),
-                        _buildErrorButton('IO Error', _triggerIOException, Colors.green),
-                        _buildErrorButton('Custom', _triggerCustomError, Colors.pink),
-                        _buildErrorButton('Div by Zero', _triggerDivisionByZero, Colors.amber),
-                        _buildErrorButton('Stack Overflow', _triggerStackOverflow, Colors.grey),
-                      ],
+                    const SizedBox(width: 12),
+                    Text(
+                      category.label,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  const Divider(height: 32),
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Error History (${_records.length})',
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (_records.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.all(32),
-                      child: Center(
-                        child: Text(
-                          'No errors recorded yet.\nTrigger some errors above!',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.grey),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: category.color.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${errors.length}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: category.color,
                         ),
                       ),
-                    )
-                  else
-                    ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: _records.length,
-                      itemBuilder: (context, index) {
-                        final record = _records[index];
-                        return _buildErrorRecordTile(record);
-                      },
                     ),
-                ],
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: errors.map((error) {
+                    return ActionChip(
+                      avatar: Icon(
+                        Icons.play_arrow_rounded,
+                        size: 18,
+                        color: category.color,
+                      ),
+                      label: Text(error.name),
+                      side: BorderSide(color: category.color.withValues(alpha: 0.3)),
+                      backgroundColor: category.color.withValues(alpha: 0.05),
+                      onPressed: () => _triggerError(error),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildHistoryTab() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_records.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.history,
+              size: 64,
+              color: Theme.of(context).colorScheme.outline,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No errors recorded yet',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: Theme.of(context).colorScheme.outline,
               ),
             ),
-    );
-  }
-
-  Widget _buildErrorButton(String label, VoidCallback onPressed, Color color) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        foregroundColor: Colors.white,
-      ),
-      child: Text(label),
-    );
-  }
-
-  Widget _buildErrorRecordTile(ErrorRecord record) {
-    final dateFormat = DateFormat('yyyy-MM-dd HH:mm:ss');
-    return ExpansionTile(
-      title: Text(
-        record.type,
-        style: const TextStyle(fontWeight: FontWeight.bold),
-      ),
-      subtitle: Text(
-        '${dateFormat.format(record.timestamp)}\n${record.message.split('\n').first}',
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-      ),
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Error Message:', style: TextStyle(fontWeight: FontWeight.bold)),
-              SelectableText(
-                record.message,
-                style: const TextStyle(color: Colors.red),
+            const SizedBox(height: 8),
+            Text(
+              'Go to "Trigger Errors" tab to generate some',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.outline,
               ),
-              const SizedBox(height: 8),
-              const Text('Stack Trace:', style: TextStyle(fontWeight: FontWeight.bold)),
-              SelectableText(
-                record.stackTrace,
-                style: const TextStyle(fontSize: 10, fontFamily: 'monospace'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final dateFormat = DateFormat('yyyy-MM-dd HH:mm:ss');
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _records.length,
+      itemBuilder: (context, index) {
+        final record = _records[index];
+        final category = ErrorCategory.values.firstWhere(
+          (c) => c.label == record.category,
+          orElse: () => ErrorCategory.customErrors,
+        );
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: ExpansionTile(
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: category.color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(category.icon, color: category.color, size: 20),
+            ),
+            title: Text(
+              record.type,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: Text(
+              dateFormat.format(record.timestamp),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildInfoChip('Category', record.category, category.color),
+                    const SizedBox(height: 12),
+                    Text('Error Message', style: Theme.of(context).textTheme.titleSmall),
+                    const SizedBox(height: 4),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.errorContainer,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: SelectableText(
+                        record.message,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onErrorContainer,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text('Stack Trace', style: Theme.of(context).textTheme.titleSmall),
+                    const SizedBox(height: 4),
+                    Container(
+                      constraints: const BoxConstraints(maxHeight: 200),
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: SingleChildScrollView(
+                        child: SelectableText(
+                          record.stackTrace,
+                          style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-        ),
-      ],
+        );
+      },
     );
   }
 }
