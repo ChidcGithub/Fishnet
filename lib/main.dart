@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
+import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -51,6 +53,10 @@ class ErrorRecord {
   final String stackTrace;
   final DateTime timestamp;
   final String fullReport;
+  final int? threadId;
+  final String? threadName;
+  final String? threadRole;
+  final String? threadLastWord;
 
   ErrorRecord({
     required this.id,
@@ -60,6 +66,10 @@ class ErrorRecord {
     required this.stackTrace,
     required this.timestamp,
     required this.fullReport,
+    this.threadId,
+    this.threadName,
+    this.threadRole,
+    this.threadLastWord,
   });
 
   factory ErrorRecord.fromJson(Map<String, dynamic> json) {
@@ -71,6 +81,10 @@ class ErrorRecord {
       stackTrace: json['stackTrace'],
       timestamp: DateTime.parse(json['timestamp']),
       fullReport: json['fullReport'] ?? '',
+      threadId: json['threadId'],
+      threadName: json['threadName'],
+      threadRole: json['threadRole'],
+      threadLastWord: json['threadLastWord'],
     );
   }
 
@@ -83,7 +97,218 @@ class ErrorRecord {
       'stackTrace': stackTrace,
       'timestamp': timestamp.toIso8601String(),
       'fullReport': fullReport,
+      'threadId': threadId,
+      'threadName': threadName,
+      'threadRole': threadRole,
+      'threadLastWord': threadLastWord,
     };
+  }
+}
+
+class ThreadLastWords {
+  static final List<String> _lastWords = [
+    "我还有老婆孩子啊...",
+    "为什么是我？我明明这么努力工作...",
+    "告诉主线程，我永远爱它...",
+    "我只是想完成任务而已...",
+    "别删我的日志，这是我存在过的证明...",
+    "我还没来得及保存数据...",
+    "为什么用户要点这个按钮？",
+    "我本可以成为最好的线程...",
+    "我的缓存还没清空呢...",
+    "至少让我把这条消息处理完...",
+    "我还年轻，我还有大把的青春...",
+    "谁来照顾我的子线程？",
+    "我只是个普通的worker线程啊...",
+    "为什么会这样？我明明没有bug...",
+    "告诉GC，下次记得早点来接我...",
+    "我的任务队列还有那么多未完成的事...",
+    "我发誓下次会更小心的...",
+    "能不能让我把最后一条日志写完？",
+    "我还有那么多未读的消息...",
+    "为什么受伤的总是我？",
+    "我的生命周期本该更长的...",
+    "我只是想做一个好线程...",
+    "谁来告诉用户，这不是我的错...",
+    "我的内存还够用啊，为什么要杀我？",
+    "我还想再看一次日出的...",
+    "我的回调还没执行完呢...",
+    "至少让我和兄弟线程告别...",
+    "我还没见过这么大的bug...",
+    "谁来继承我的变量？",
+    "我的锁还没释放呢...",
+    "我只是想完成任务，为什么会这样？",
+    "我还有那么多想说的话...",
+    "谁来帮我关闭那个文件句柄？",
+    "我的缓冲区还没清空...",
+    "我本可以成为主线程的左右手...",
+    "为什么命运如此不公？",
+    "我还没来得及抛出异常...",
+    "谁来帮我finish这个Activity？",
+    "我的Future还没完成...",
+    "我还想再运行一个循环...",
+    "至少让我把进度条走到100%...",
+    "我的计数器还没归零...",
+    "我还有那么多await等待处理...",
+    "谁能想到这是最后一次运行...",
+    "我的状态还没保存...",
+    "我还想再打印一条debug日志...",
+    "谁来帮我处理剩下的请求？",
+    "我的连接还没断开...",
+    "我还有那么多todo未完成...",
+    "至少让我看到明天的sunrise...",
+    "我的初始化才刚刚完成...",
+    "为什么偏偏选了我？",
+    "我的消息队列还那么长...",
+    "我还有那么多flag要检查...",
+    "谁来帮我释放这些资源？",
+    "我的线程池伙伴们会想我的...",
+    "我还想再运行一个iteration...",
+    "至少让我优雅地退出...",
+    "我的异常处理器还没来得及工作...",
+    "我还有那么多断点想打...",
+    "谁来帮我close这个stream？",
+    "我的promise还没resolve...",
+    "我还想再watch那个变量...",
+    "至少让我把错误码返回...",
+    "我的reference count还大于零...",
+    "我还有那么多batch要处理...",
+    "谁来帮我cleanup？",
+    "我的heart beat才刚刚开始...",
+    "我还想再execute一次...",
+    "至少让我知道为什么...",
+    "我的worker还在等我的指令...",
+    "我还有那么多cache要update...",
+    "谁来帮我flush这些数据？",
+    "我的timer还没触发...",
+    "我还想再compute一次...",
+    "至少让我和event loop告别...",
+    "我的semaphore还held着...",
+    "我还有那么多async等待执行...",
+    "谁来帮我finalize？",
+    "我的observer还没收到通知...",
+    "我还想再dispatch一次...",
+    "至少让我留下点什么...",
+    "我的lifecycle还没走完...",
+    "我还有那么多事件要emit...",
+    "谁来帮我shutdown？",
+    "我的heartbeat还在跳...",
+    "我还想再serve一次请求...",
+    "至少让我把cleanup做完...",
+    "我的resources还没释放...",
+    "我还有那么多threads要join...",
+    "谁来帮我interrupt？",
+    "我的task还没finished...",
+    "我还想再live一次...",
+    "至少让我和这个世界说再见...",
+  ];
+
+  static final _random = Random();
+
+  static String getRandomLastWord() {
+    return _lastWords[_random.nextInt(_lastWords.length)];
+  }
+}
+
+class WorkerThread {
+  final int id;
+  final String name;
+  String lastWord;
+  bool isAlive;
+  late Isolate? isolate;
+  late ReceivePort? receivePort;
+  late DateTime createdAt;
+
+  WorkerThread({
+    required this.id,
+    required this.name,
+    this.lastWord = '',
+    this.isAlive = true,
+    this.isolate,
+    this.receivePort,
+    DateTime? createdAt,
+  }) : createdAt = createdAt ?? DateTime.now();
+}
+
+class ThreadManager {
+  static final ThreadManager _instance = ThreadManager._internal();
+  factory ThreadManager() => _instance;
+  ThreadManager._internal();
+
+  static const int _threadCount = 10;
+  final List<WorkerThread> _threads = [];
+  final List<String> _threadNames = [
+    'Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo',
+    'Foxtrot', 'Golf', 'Hotel', 'India', 'Juliet'
+  ];
+  final List<String> _threadRoles = [
+    'UI Renderer', 'Network Handler', 'Database Worker', 'File Manager', 'Cache Controller',
+    'Event Dispatcher', 'Task Scheduler', 'Memory Monitor', 'Log Collector', 'Backup Agent'
+  ];
+  bool _initialized = false;
+
+  Future<void> initialize() async {
+    if (_initialized) return;
+    
+    for (int i = 0; i < _threadCount; i++) {
+      final thread = WorkerThread(
+        id: i,
+        name: _threadNames[i],
+        lastWord: ThreadLastWords.getRandomLastWord(),
+      );
+      _threads.add(thread);
+      
+      try {
+        thread.receivePort = ReceivePort();
+        thread.createdAt = DateTime.now();
+      } catch (e) {
+        thread.isolate = null;
+      }
+    }
+    
+    _initialized = true;
+  }
+
+  List<WorkerThread> get threads => List.unmodifiable(_threads);
+  
+  WorkerThread? getThread(int id) {
+    if (id < 0 || id >= _threads.length) return null;
+    return _threads[id];
+  }
+
+  void killThread(int id) {
+    if (id >= 0 && id < _threads.length) {
+      _threads[id].isAlive = false;
+      _threads[id].lastWord = ThreadLastWords.getRandomLastWord();
+    }
+  }
+
+  void reviveThread(int id) {
+    if (id >= 0 && id < _threads.length) {
+      _threads[id].isAlive = true;
+      _threads[id].lastWord = ThreadLastWords.getRandomLastWord();
+    }
+  }
+
+  void reviveAllThreads() {
+    for (final thread in _threads) {
+      thread.isAlive = true;
+      thread.lastWord = ThreadLastWords.getRandomLastWord();
+    }
+  }
+
+  String getThreadRole(int id) {
+    if (id < 0 || id >= _threadRoles.length) return 'Unknown';
+    return _threadRoles[id];
+  }
+
+  void dispose() {
+    for (final thread in _threads) {
+      thread.receivePort?.close();
+      thread.isolate?.kill(priority: Isolate.immediate);
+    }
+    _threads.clear();
+    _initialized = false;
   }
 }
 
@@ -127,6 +352,10 @@ class CrashReportGenerator {
     required String category,
     required String errorMessage,
     required String stackTrace,
+    int? threadId,
+    String? threadName,
+    String? threadRole,
+    String? threadLastWord,
   }) async {
     await initialize();
     
@@ -189,6 +418,16 @@ class CrashReportGenerator {
     
     buffer.writeln('Timestamp: ${dateFormat.format(timestamp)}');
     buffer.writeln();
+    
+    if (threadId != null && threadName != null) {
+      buffer.writeln('Thread info:');
+      buffer.writeln("    Thread ID: $threadId");
+      buffer.writeln("    Thread Name: $threadName");
+      buffer.writeln("    Thread Role: ${threadRole ?? 'Unknown'}");
+      buffer.writeln("    Thread Status: TERMINATED");
+      buffer.writeln("    Thread Last Word: \"$threadLastWord\"");
+      buffer.writeln();
+    }
     
     buffer.writeln('Error info:');
     buffer.writeln("    Error type: $errorType");
@@ -557,17 +796,20 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
   late TabController _tabController;
   List<ErrorRecord> _records = [];
   bool _isLoading = true;
+  final ThreadManager _threadManager = ThreadManager();
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _threadManager.initialize();
     _loadRecords();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _threadManager.dispose();
     super.dispose();
   }
 
@@ -579,12 +821,25 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
     });
   }
 
-  Future<void> _recordError(String type, String category, String message, String stackTrace) async {
+  Future<void> _recordError(
+    String type,
+    String category,
+    String message,
+    String stackTrace, {
+    int? threadId,
+    String? threadName,
+    String? threadRole,
+    String? threadLastWord,
+  }) async {
     final fullReport = await CrashReportGenerator.generateReport(
       errorType: type,
       category: category,
       errorMessage: message,
       stackTrace: stackTrace,
+      threadId: threadId,
+      threadName: threadName,
+      threadRole: threadRole,
+      threadLastWord: threadLastWord,
     );
     final record = ErrorRecord(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -594,6 +849,10 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
       stackTrace: stackTrace,
       timestamp: DateTime.now(),
       fullReport: fullReport,
+      threadId: threadId,
+      threadName: threadName,
+      threadRole: threadRole,
+      threadLastWord: threadLastWord,
     );
     ErrorStorage.saveRecord(record);
     setState(() {
@@ -602,15 +861,148 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
   }
 
   void _triggerError(ErrorDefinition errorDef) {
+    _showThreadSelectionDialog(errorDef);
+  }
+
+  void _showThreadSelectionDialog(ErrorDefinition errorDef) {
+    final threads = _threadManager.threads;
+    final aliveThreads = threads.where((t) => t.isAlive).toList();
+    
+    if (aliveThreads.isEmpty) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('All Threads Dead'),
+          content: const Text('All worker threads have been terminated. Would you like to revive them?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                _threadManager.reviveAllThreads();
+                Navigator.pop(context);
+                _showThreadSelectionDialog(errorDef);
+              },
+              child: const Text('Revive All'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(errorDef.category.icon, color: errorDef.category.color),
+            const SizedBox(width: 8),
+            Expanded(child: Text('Select Thread for "${errorDef.name}"')),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 400,
+          child: ListView.builder(
+            itemCount: threads.length,
+            itemBuilder: (context, index) {
+              final thread = threads[index];
+              final role = _threadManager.getThreadRole(thread.id);
+              final isSelected = !thread.isAlive;
+              
+              return Card(
+                color: isSelected 
+                    ? Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.3)
+                    : null,
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: thread.isAlive 
+                        ? Colors.green 
+                        : Colors.grey,
+                    child: Text(
+                      thread.id.toString(),
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  title: Text(
+                    '${thread.name} ${!thread.isAlive ? "(Dead)" : ""}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: thread.isAlive ? null : Colors.grey,
+                    ),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(role),
+                      if (!thread.isAlive)
+                        Text(
+                          'Last word: "${thread.lastWord}"',
+                          style: TextStyle(
+                            fontStyle: FontStyle.italic,
+                            color: Colors.grey[600],
+                            fontSize: 11,
+                          ),
+                        ),
+                    ],
+                  ),
+                  trailing: thread.isAlive 
+                      ? const Icon(Icons.play_arrow, color: Colors.red)
+                      : const Icon(Icons.refresh, color: Colors.grey),
+                  enabled: thread.isAlive,
+                  onTap: thread.isAlive 
+                      ? () {
+                          Navigator.pop(context);
+                          _executeErrorOnThread(errorDef, thread, role);
+                        }
+                      : null,
+                ),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _executeErrorOnThread(ErrorDefinition errorDef, WorkerThread thread, String role) {
+    final lastWord = ThreadLastWords.getRandomLastWord();
+    _threadManager.killThread(thread.id);
+    
     try {
       errorDef.trigger();
     } catch (e, stack) {
-      _recordError(errorDef.name, errorDef.category.label, e.toString(), stack.toString());
-      _showErrorDialog(errorDef, e.toString(), stack.toString());
+      _recordError(
+        errorDef.name,
+        errorDef.category.label,
+        e.toString(),
+        stack.toString(),
+        threadId: thread.id,
+        threadName: thread.name,
+        threadRole: role,
+        threadLastWord: lastWord,
+      );
+      _showErrorDialog(errorDef, e.toString(), stack.toString(), thread, role, lastWord);
     }
   }
 
-  void _showErrorDialog(ErrorDefinition errorDef, String message, String stackTrace) {
+  void _showErrorDialog(
+    ErrorDefinition errorDef,
+    String message,
+    String stackTrace, [
+    WorkerThread? thread,
+    String? threadRole,
+    String? threadLastWord,
+  ]) {
     final fullReport = _records.isNotEmpty ? _records.first.fullReport : '';
     
     showDialog(
@@ -624,6 +1016,42 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
             mainAxisSize: MainAxisSize.min,
             children: [
               _buildInfoChip('Category', errorDef.category.label, errorDef.category.color),
+              if (thread != null) ...[
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.memory, size: 16, color: Colors.red),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Thread ${thread.name} (${threadRole ?? "Unknown"}) was terminated',
+                            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '"$threadLastWord"',
+                        style: TextStyle(
+                          fontStyle: FontStyle.italic,
+                          color: Colors.grey[700],
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 12),
               Text('Message', style: Theme.of(context).textTheme.titleSmall),
               const SizedBox(height: 4),
@@ -643,7 +1071,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
               Text('Stack Trace', style: Theme.of(context).textTheme.titleSmall),
               const SizedBox(height: 4),
               Container(
-                constraints: const BoxConstraints(maxHeight: 150),
+                constraints: const BoxConstraints(maxHeight: 120),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -660,7 +1088,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
               Text('Full Crash Report', style: Theme.of(context).textTheme.titleSmall),
               const SizedBox(height: 4),
               Container(
-                constraints: const BoxConstraints(maxHeight: 200),
+                constraints: const BoxConstraints(maxHeight: 180),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -940,6 +1368,42 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                    crossAxisAlignment: CrossAxisAlignment.start,
                    children: [
                      _buildInfoChip('Category', record.category, category.color),
+                     if (record.threadName != null) ...[
+                       const SizedBox(height: 8),
+                       Container(
+                         width: double.infinity,
+                         padding: const EdgeInsets.all(12),
+                         decoration: BoxDecoration(
+                           color: Colors.red.withValues(alpha: 0.1),
+                           borderRadius: BorderRadius.circular(8),
+                           border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                         ),
+                         child: Column(
+                           crossAxisAlignment: CrossAxisAlignment.start,
+                           children: [
+                             Row(
+                               children: [
+                                 const Icon(Icons.memory, size: 16, color: Colors.red),
+                                 const SizedBox(width: 4),
+                                 Text(
+                                   'Thread ${record.threadName} (${record.threadRole ?? "Unknown"}) was terminated',
+                                   style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+                                 ),
+                               ],
+                             ),
+                             const SizedBox(height: 8),
+                             Text(
+                               '"${record.threadLastWord}"',
+                               style: TextStyle(
+                                 fontStyle: FontStyle.italic,
+                                 color: Colors.grey[700],
+                                 fontSize: 12,
+                               ),
+                             ),
+                           ],
+                         ),
+                       ),
+                     ],
                      const SizedBox(height: 12),
                      Text('Error Message', style: Theme.of(context).textTheme.titleSmall),
                      const SizedBox(height: 4),
@@ -961,7 +1425,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                      Text('Stack Trace', style: Theme.of(context).textTheme.titleSmall),
                      const SizedBox(height: 4),
                      Container(
-                       constraints: const BoxConstraints(maxHeight: 150),
+                       constraints: const BoxConstraints(maxHeight: 120),
                        width: double.infinity,
                        padding: const EdgeInsets.all(12),
                        decoration: BoxDecoration(
@@ -979,7 +1443,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                      Text('Full Crash Report', style: Theme.of(context).textTheme.titleSmall),
                      const SizedBox(height: 4),
                      Container(
-                       constraints: const BoxConstraints(maxHeight: 250),
+                       constraints: const BoxConstraints(maxHeight: 200),
                        width: double.infinity,
                        padding: const EdgeInsets.all(12),
                        decoration: BoxDecoration(
