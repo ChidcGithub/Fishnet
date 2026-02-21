@@ -16,6 +16,17 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version info
+        id: version
+        run: |
+          COMMIT_COUNT=$(git rev-list --count HEAD)
+          echo "build_number=$COMMIT_COUNT" >> $GITHUB_OUTPUT
+          echo "version=1.0.$COMMIT_COUNT" >> $GITHUB_OUTPUT
+          echo "Build Number: $COMMIT_COUNT"
+          echo "Version: 1.0.$COMMIT_COUNT"
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -40,10 +51,10 @@ jobs:
         run: flutter test
 
       - name: Build APK
-        run: flutter build apk --release
+        run: flutter build apk --release --build-name=${{ steps.version.outputs.version }} --build-number=${{ steps.version.outputs.build_number }}
 
       - name: Build App Bundle
-        run: flutter build appbundle --release
+        run: flutter build appbundle --release --build-name=${{ steps.version.outputs.version }} --build-number=${{ steps.version.outputs.build_number }}
 
       - name: Rename APK
         run: mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/fishnet.apk
@@ -67,14 +78,14 @@ jobs:
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.${{ github.run_number }}
-          name: Release v1.0.${{ github.run_number }}
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Release v${{ steps.version.outputs.version }}
           body: |
-            ## 🎣 Fishnet - Error Testing App
+            ## Fishnet - Error Testing App
             
             A Flutter application for triggering various types of errors and viewing detailed crash reports.
             
-            ### ✨ Features
+            ### Features
             - **8 Error Categories**: Null, Type, Range, State, Network, Logic, Async, Custom Errors
             - **60+ Error Types**: Comprehensive collection of common Dart/Flutter errors
             - **Thread System**: 10 worker threads (Alpha-Juliet) with unique roles
@@ -84,13 +95,13 @@ jobs:
             - **Error History**: Persistent storage of crash records
             - **Export Reports**: Copy full crash reports to clipboard
             
-            ### 📱 Downloads
+            ### Downloads
             | File | Description |
             |------|-------------|
             | `fishnet.apk` | Android APK for direct installation |
             | `fishnet.aab` | Android App Bundle for Google Play |
             
-            ### 🧵 Thread Roles
+            ### Thread Roles
             1. Alpha - UI Renderer
             2. Bravo - Network Handler
             3. Charlie - Database Worker
@@ -102,10 +113,12 @@ jobs:
             9. India - Log Collector
             10. Juliet - Backup Agent
             
-            ### 📝 Commit
-            Built from: ${{ github.sha }}
+            ### Version Info
+            - **Version**: ${{ steps.version.outputs.version }}
+            - **Build Number**: ${{ steps.version.outputs.build_number }}
+            - **Commit**: ${{ github.sha }}
             
-            ### 📜 License
+            ### License
             Apache 2.0
           files: |
             build/app/outputs/flutter-apk/fishnet.apk
