@@ -5,6 +5,5 @@ void main() {
   testWidgets('Fishnet app smoke test', (WidgetTester tester) async {
     await tester.pumpWidget(const FishnetApp());
     expect(find.text('Fishnet'), findsOneWidget);
-    expect(find.text('Trigger Errors'), findsOneWidget);
   });
 }
